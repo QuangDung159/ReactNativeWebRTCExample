@@ -56,6 +56,8 @@ const App = () => {
   };
 
   const startWebcam = async () => {
+    setWebcamStarted(true);
+
     pc.current = new RTCPeerConnection(servers);
     const local = await mediaDevices.getUserMedia({
       video: true,
@@ -82,12 +84,12 @@ const App = () => {
     pc.current.onaddstream = event => {
       setRemoteStream(event.stream);
     };
-
-    setWebcamStarted(true);
   };
 
   const startCall = async () => {
+    console.log('first');
     const channelDoc = firestore().collection('channels').doc();
+    console.log('channelDoc :>> ', channelDoc);
     const offerCandidates = channelDoc.collection('offerCandidates');
     const answerCandidates = channelDoc.collection('answerCandidates');
 
