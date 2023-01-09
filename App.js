@@ -29,22 +29,38 @@ const App = () => {
   const pc = useRef();
   const servers = {
     iceServers: [
+      // {
+      //   urls: [
+      //     'stun:stun1.l.google.com:19302',
+      //     'stun:stun2.l.google.com:19302',
+      //   ],
+      // },
       {
-        urls: [
-          'stun:stun1.l.google.com:19302',
-          'stun:stun2.l.google.com:19302',
-        ],
+        urls: 'stun:stun1.l.google.com:19302',
       },
+      {
+        urls: 'stun:stun2.l.google.com:19302',
+      },
+      // {
+      //   urls: 'stun:relay.metered.ca:80',
+      // },
+      // {
+      //   urls: 'turn:relay.metered.ca:80',
+      //   username: '6ab1d935a6983ca3a6be80c3',
+      //   credential: 'qF2aKE4+bvkEsCzd',
+      // },
+      // {
+      //   urls: 'turn:relay.metered.ca:443',
+      //   username: '6ab1d935a6983ca3a6be80c3',
+      //   credential: 'qF2aKE4+bvkEsCzd',
+      // },
+      // {
+      //   urls: 'turn:relay.metered.ca:443?transport=tcp',
+      //   username: '6ab1d935a6983ca3a6be80c3',
+      //   credential: 'qF2aKE4+bvkEsCzd',
+      // },
     ],
     iceCandidatePoolSize: 10,
-  };
-
-  let peerConstraints = {
-    iceServers: [
-      {
-        urls: 'stun:stun.l.google.com:19302',
-      },
-    ],
   };
 
   const startWebcam = async () => {
