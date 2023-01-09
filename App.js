@@ -1,21 +1,14 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- * @flow strict-local
- */
+import React, {useRef, useState} from 'react';
 
-import React from 'react';
 import {
   Button,
+  KeyboardAvoidingView,
   SafeAreaView,
-  StatusBar,
   StyleSheet,
   TextInput,
-  useColorScheme,
   View,
 } from 'react-native';
+
 import {
   mediaDevices,
   MediaStream,
@@ -26,21 +19,11 @@ import {
 } from 'react-native-webrtc';
 
 import firestore from '@react-native-firebase/firestore';
-import KeyboardAvoidingView from 'react-native/Libraries/Components/Keyboard/KeyboardAvoidingView';
-import {Colors} from 'react-native/Libraries/NewAppScreen';
-import {useRef, useState} from 'react/cjs/react.development';
 
 const App = () => {
-  const isDarkMode = useColorScheme() === 'dark';
-
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
-  };
-
-  // setup webrtc
   const [remoteStream, setRemoteStream] = useState(null);
-  const [localStream, setLocalStream] = useState(null);
   const [webcamStarted, setWebcamStarted] = useState(false);
+  const [localStream, setLocalStream] = useState(null);
   const [channelId, setChannelId] = useState(null);
   const pc = useRef();
   const servers = {
@@ -55,26 +38,34 @@ const App = () => {
     iceCandidatePoolSize: 10,
   };
 
-  const startWebcam = async () => {
-    setWebcamStarted(true);
+  let peerConstraints = {
+    iceServers: [
+      {
+        urls: 'stun:stun.l.google.com:19302',
+      },
+    ],
+  };
 
-    pc.current = new RTCPeerConnection(servers);
+  const startWebcam = async () => {
+    pc.current = new RTCPeerConnection(peerConstraints);
+    console.log('pc.current :>> ', pc.current);
+    console.log('asd');
     const local = await mediaDevices.getUserMedia({
       video: true,
       audio: true,
     });
     pc.current.addStream(local);
     setLocalStream(local);
-
     const remote = new MediaStream();
     setRemoteStream(remote);
 
     // Push tracks from local stream to peer connection
     local.getTracks().forEach(track => {
+      console.log(pc.current.getLocalStreams());
       pc.current.getLocalStreams()[0].addTrack(track);
     });
 
-    // Pull tracks from peer connection, add to remote video stream
+    // Pull tracks from remote stream, add to video stream
     pc.current.ontrack = event => {
       event.streams[0].getTracks().forEach(track => {
         remote.addTrack(track);
@@ -84,6 +75,8 @@ const App = () => {
     pc.current.onaddstream = event => {
       setRemoteStream(event.stream);
     };
+
+    setWebcamStarted(true);
   };
 
   const startCall = async () => {
@@ -173,10 +166,6 @@ const App = () => {
   return (
     <KeyboardAvoidingView style={styles.body} behavior="position">
       <SafeAreaView>
-        <StatusBar
-          barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-          backgroundColor={backgroundStyle.backgroundColor}
-        />
         {localStream && (
           <RTCView
             streamURL={localStream?.toURL()}
@@ -218,21 +207,21 @@ const App = () => {
 };
 
 const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
+  body: {
+    backgroundColor: '#fff',
+
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...StyleSheet.absoluteFill,
   },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
+  stream: {
+    flex: 2,
+    width: 200,
+    height: 200,
   },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
+  buttons: {
+    alignItems: 'flex-start',
+    flexDirection: 'column',
   },
 });
 
