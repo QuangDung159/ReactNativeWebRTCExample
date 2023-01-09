@@ -87,9 +87,7 @@ const App = () => {
   };
 
   const startCall = async () => {
-    console.log('first');
     const channelDoc = firestore().collection('channels').doc();
-    console.log('channelDoc :>> ', channelDoc);
     const offerCandidates = channelDoc.collection('offerCandidates');
     const answerCandidates = channelDoc.collection('answerCandidates');
 

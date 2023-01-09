@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "770230931665-rfbf57egsogpbm8uqe1l2bnfp13k79ip.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.reactnativewebrtcexample",
+            "certificate_hash": "273f6ec189f6c872b8fedfa441efa3d26611acb7"
+          }
+        },
+        {
           "client_id": "770230931665-tujo9bl4d0bbub4l83tnrae77ru2b2ui.apps.googleusercontent.com",
           "client_type": 3
         }
