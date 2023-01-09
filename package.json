@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@react-native-firebase/app": "^16.5.0",
+    "@react-native-firebase/firestore": "^16.5.0",
     "react": "18.1.0",
     "react-native": "0.70.6",
     "react-native-webrtc": "^106.0.1"
