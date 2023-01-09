@@ -3,7 +3,8 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "android": "react-native run-android",
+    "android:debug": "react-native run-android --variant debug",
+    "android:release": "react-native run-android --variant release",
     "ios": "react-native run-ios",
     "start": "react-native start",
     "test": "jest",
@@ -12,6 +13,7 @@
     "pod-m1": "cd ios && arch -x86_64 pod install"
   },
   "dependencies": {
+    "@react-native-clipboard/clipboard": "^1.11.1",
     "@react-native-firebase/app": "^16.5.0",
     "@react-native-firebase/firestore": "^16.5.0",
     "react": "18.1.0",

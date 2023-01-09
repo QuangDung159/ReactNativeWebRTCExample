@@ -1,3 +1,4 @@
+import Clipboard from '@react-native-clipboard/clipboard';
 import React, {useRef, useState} from 'react';
 
 import {
@@ -48,7 +49,6 @@ const App = () => {
 
   const startWebcam = async () => {
     pc.current = new RTCPeerConnection(peerConstraints);
-    console.log('pc.current :>> ', pc.current);
     console.log('asd');
     const local = await mediaDevices.getUserMedia({
       video: true,
@@ -163,6 +163,10 @@ const App = () => {
     });
   };
 
+  const copyToClipboard = () => {
+    Clipboard.setString('hello world');
+  };
+
   return (
     <KeyboardAvoidingView style={styles.body} behavior="position">
       <SafeAreaView>
@@ -195,8 +199,14 @@ const App = () => {
                 value={channelId}
                 placeholder="callId"
                 minLength={45}
-                style={{borderWidth: 1, padding: 5}}
+                style={{borderWidth: 1, padding: 5, color: 'black'}}
                 onChangeText={newText => setChannelId(newText)}
+              />
+              <Button
+                title="Copy"
+                onPress={() => {
+                  copyToClipboard();
+                }}
               />
             </View>
           )}
@@ -209,7 +219,6 @@ const App = () => {
 const styles = StyleSheet.create({
   body: {
     backgroundColor: '#fff',
-
     justifyContent: 'center',
     alignItems: 'center',
     ...StyleSheet.absoluteFill,
