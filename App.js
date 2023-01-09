@@ -48,8 +48,7 @@ const App = () => {
   };
 
   const startWebcam = async () => {
-    pc.current = new RTCPeerConnection(peerConstraints);
-    console.log('asd');
+    pc.current = new RTCPeerConnection(servers);
     const local = await mediaDevices.getUserMedia({
       video: true,
       audio: true,
@@ -163,8 +162,8 @@ const App = () => {
     });
   };
 
-  const copyToClipboard = () => {
-    Clipboard.setString('hello world');
+  const copyToClipboard = str => {
+    Clipboard.setString(str);
   };
 
   return (
@@ -205,7 +204,7 @@ const App = () => {
               <Button
                 title="Copy"
                 onPress={() => {
-                  copyToClipboard();
+                  copyToClipboard(channelId);
                 }}
               />
             </View>
