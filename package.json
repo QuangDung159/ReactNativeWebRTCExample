@@ -7,9 +7,12 @@
     "ios": "react-native run-ios",
     "start": "react-native start",
     "test": "jest",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "pod": "cd ios && pod install && cd ..",
+    "pod-m1": "cd ios && arch -x86_64 pod install"
   },
   "dependencies": {
+    "@react-native-firebase/app": "^16.5.0",
     "react": "18.1.0",
     "react-native": "0.70.6",
     "react-native-webrtc": "^106.0.1"
