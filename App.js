@@ -8,56 +8,27 @@
 
 import React from 'react';
 import {
+  Button,
   SafeAreaView,
-  ScrollView,
   StatusBar,
   StyleSheet,
-  Text,
+  TextInput,
   useColorScheme,
   View,
 } from 'react-native';
 import {
   mediaDevices,
   MediaStream,
+  RTCIceCandidate,
   RTCPeerConnection,
+  RTCSessionDescription,
+  RTCView,
 } from 'react-native-webrtc';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+import firestore from '@react-native-firebase/firestore';
+import KeyboardAvoidingView from 'react-native/Libraries/Components/Keyboard/KeyboardAvoidingView';
+import {Colors} from 'react-native/Libraries/NewAppScreen';
 import {useRef, useState} from 'react/cjs/react.development';
-
-/* $FlowFixMe[missing-local-annot] The type annotation(s) required by Flow's
- * LTI update could not be added via codemod */
-const Section = ({children, title}) => {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-};
 
 const App = () => {
   const isDarkMode = useColorScheme() === 'dark';
@@ -111,83 +82,138 @@ const App = () => {
     pc.current.onaddstream = event => {
       setRemoteStream(event.stream);
     };
+
+    setWebcamStarted(true);
   };
 
-  // const startCall = async () => {
-  //   const channelDoc = firestore().collection('channels').doc();
-  //   const offerCandidates = channelDoc.collection('offerCandidates');
-  //   const answerCandidates = channelDoc.collection('answerCandidates');
+  const startCall = async () => {
+    const channelDoc = firestore().collection('channels').doc();
+    const offerCandidates = channelDoc.collection('offerCandidates');
+    const answerCandidates = channelDoc.collection('answerCandidates');
 
-  //   setChannelId(channelDoc.id);
+    setChannelId(channelDoc.id);
 
-  //   pc.current.onicecandidate = async event => {
-  //     if (event.candidate) {
-  //       await offerCandidates.add(event.candidate.toJSON());
-  //     }
-  //   };
+    pc.current.onicecandidate = async event => {
+      if (event.candidate) {
+        await offerCandidates.add(event.candidate.toJSON());
+      }
+    };
 
-  //   //create offer
-  //   const offerDescription = await pc.current.createOffer();
-  //   await pc.current.setLocalDescription(offerDescription);
+    //create offer
+    const offerDescription = await pc.current.createOffer();
+    await pc.current.setLocalDescription(offerDescription);
 
-  //   const offer = {
-  //     sdp: offerDescription.sdp,
-  //     type: offerDescription.type,
-  //   };
+    const offer = {
+      sdp: offerDescription.sdp,
+      type: offerDescription.type,
+    };
 
-  //   await channelDoc.set({offer});
+    await channelDoc.set({offer});
 
-  //   // Listen for remote answer
-  //   channelDoc.onSnapshot(snapshot => {
-  //     const data = snapshot.data();
-  //     if (!pc.current.currentRemoteDescription && data?.answer) {
-  //       const answerDescription = new RTCSessionDescription(data.answer);
-  //       pc.current.setRemoteDescription(answerDescription);
-  //     }
-  //   });
+    // Listen for remote answer
+    channelDoc.onSnapshot(snapshot => {
+      const data = snapshot.data();
+      if (!pc.current.currentRemoteDescription && data?.answer) {
+        const answerDescription = new RTCSessionDescription(data.answer);
+        pc.current.setRemoteDescription(answerDescription);
+      }
+    });
 
-  //   // When answered, add candidate to peer connection
-  //   answerCandidates.onSnapshot(snapshot => {
-  //     snapshot.docChanges().forEach(change => {
-  //       if (change.type === 'added') {
-  //         const data = change.doc.data();
-  //         pc.current.addIceCandidate(new RTCIceCandidate(data));
-  //       }
-  //     });
-  //   });
-  // };
+    // When answered, add candidate to peer connection
+    answerCandidates.onSnapshot(snapshot => {
+      snapshot.docChanges().forEach(change => {
+        if (change.type === 'added') {
+          const data = change.doc.data();
+          pc.current.addIceCandidate(new RTCIceCandidate(data));
+        }
+      });
+    });
+  };
+
+  const joinCall = async () => {
+    const channelDoc = firestore().collection('channels').doc(channelId);
+    const offerCandidates = channelDoc.collection('offerCandidates');
+    const answerCandidates = channelDoc.collection('answerCandidates');
+
+    pc.current.onicecandidate = async event => {
+      if (event.candidate) {
+        await answerCandidates.add(event.candidate.toJSON());
+      }
+    };
+
+    const channelDocument = await channelDoc.get();
+    const channelData = channelDocument.data();
+
+    const offerDescription = channelData.offer;
+
+    await pc.current.setRemoteDescription(
+      new RTCSessionDescription(offerDescription),
+    );
+
+    const answerDescription = await pc.current.createAnswer();
+    await pc.current.setLocalDescription(answerDescription);
+
+    const answer = {
+      type: answerDescription.type,
+      sdp: answerDescription.sdp,
+    };
+
+    await channelDoc.update({answer});
+
+    offerCandidates.onSnapshot(snapshot => {
+      snapshot.docChanges().forEach(change => {
+        if (change.type === 'added') {
+          const data = change.doc.data();
+          pc.current.addIceCandidate(new RTCIceCandidate(data));
+        }
+      });
+    });
+  };
 
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.js</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
+    <KeyboardAvoidingView style={styles.body} behavior="position">
+      <SafeAreaView>
+        <StatusBar
+          barStyle={isDarkMode ? 'light-content' : 'dark-content'}
+          backgroundColor={backgroundStyle.backgroundColor}
+        />
+        {localStream && (
+          <RTCView
+            streamURL={localStream?.toURL()}
+            style={styles.stream}
+            objectFit="cover"
+            mirror
+          />
+        )}
+
+        {remoteStream && (
+          <RTCView
+            streamURL={remoteStream?.toURL()}
+            style={styles.stream}
+            objectFit="cover"
+            mirror
+          />
+        )}
+        <View style={styles.buttons}>
+          {!webcamStarted && (
+            <Button title="Start webcam" onPress={startWebcam} />
+          )}
+          {webcamStarted && <Button title="Start call" onPress={startCall} />}
+          {webcamStarted && (
+            <View style={{flexDirection: 'row'}}>
+              <Button title="Join call" onPress={joinCall} />
+              <TextInput
+                value={channelId}
+                placeholder="callId"
+                minLength={45}
+                style={{borderWidth: 1, padding: 5}}
+                onChangeText={newText => setChannelId(newText)}
+              />
+            </View>
+          )}
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 };
 
