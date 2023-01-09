@@ -198,7 +198,7 @@ const App = () => {
                 value={channelId}
                 placeholder="callId"
                 minLength={45}
-                style={{borderWidth: 1, padding: 5, color: 'black'}}
+                style={{borderWidth: 1, padding: 5}}
                 onChangeText={newText => setChannelId(newText)}
               />
               <Button
@@ -217,7 +217,7 @@ const App = () => {
 
 const styles = StyleSheet.create({
   body: {
-    backgroundColor: '#fff',
+    backgroundColor: '#000000',
     justifyContent: 'center',
     alignItems: 'center',
     ...StyleSheet.absoluteFill,
