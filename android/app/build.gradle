@@ -1,4 +1,5 @@
 apply plugin: "com.android.application"
+apply plugin: 'com.google.gms.google-services'
 
 import com.android.build.OutputFile
 import org.apache.tools.ant.taskdefs.condition.Os
@@ -134,6 +135,11 @@ android {
 
     compileSdkVersion rootProject.ext.compileSdkVersion
 
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
     defaultConfig {
         applicationId "com.reactnativewebrtcexample"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -212,10 +218,16 @@ android {
     }
     signingConfigs {
         debug {
-            storeFile file('debug.keystore')
+            storeFile file('debug-keystore.jks')
             storePassword 'android'
-            keyAlias 'androiddebugkey'
+            keyAlias 'debug-keystore'
             keyPassword 'android'
+        }
+        release {
+            storeFile file('release-keystore.jks')
+            storePassword 'gnud159'
+            keyAlias 'release-keystore'
+            keyPassword 'gnud159'
         }
     }
     buildTypes {
@@ -225,7 +237,7 @@ android {
         release {
             // Caution! In production, you need to generate your own keystore file.
             // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.release
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }

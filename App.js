@@ -1,116 +1,235 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- * @flow strict-local
- */
+import Clipboard from '@react-native-clipboard/clipboard';
+import React, {useRef, useState} from 'react';
 
-import React from 'react';
-import type {Node} from 'react';
 import {
+  Button,
+  KeyboardAvoidingView,
   SafeAreaView,
-  ScrollView,
-  StatusBar,
   StyleSheet,
-  Text,
-  useColorScheme,
+  TextInput,
   View,
 } from 'react-native';
 
 import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+  mediaDevices,
+  MediaStream,
+  RTCIceCandidate,
+  RTCPeerConnection,
+  RTCSessionDescription,
+  RTCView,
+} from 'react-native-webrtc';
 
-/* $FlowFixMe[missing-local-annot] The type annotation(s) required by Flow's
- * LTI update could not be added via codemod */
-const Section = ({children, title}): Node => {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-};
+import firestore from '@react-native-firebase/firestore';
 
-const App: () => Node = () => {
-  const isDarkMode = useColorScheme() === 'dark';
+const App = () => {
+  const [remoteStream, setRemoteStream] = useState(null);
+  const [webcamStarted, setWebcamStarted] = useState(false);
+  const [localStream, setLocalStream] = useState(null);
+  const [channelId, setChannelId] = useState(null);
+  const pc = useRef();
+  const servers = {
+    iceServers: [
+      {
+        urls: [
+          'stun:stun1.l.google.com:19302',
+          'stun:stun2.l.google.com:19302',
+        ],
+      },
+    ],
+    iceCandidatePoolSize: 10,
+  };
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+  let peerConstraints = {
+    iceServers: [
+      {
+        urls: 'stun:stun.l.google.com:19302',
+      },
+    ],
+  };
+
+  const startWebcam = async () => {
+    pc.current = new RTCPeerConnection(servers);
+    const local = await mediaDevices.getUserMedia({
+      video: true,
+      audio: true,
+    });
+    pc.current.addStream(local);
+    setLocalStream(local);
+    const remote = new MediaStream();
+    setRemoteStream(remote);
+
+    // Push tracks from local stream to peer connection
+    local.getTracks().forEach(track => {
+      console.log(pc.current.getLocalStreams());
+      pc.current.getLocalStreams()[0].addTrack(track);
+    });
+
+    // Pull tracks from remote stream, add to video stream
+    pc.current.ontrack = event => {
+      event.streams[0].getTracks().forEach(track => {
+        remote.addTrack(track);
+      });
+    };
+
+    pc.current.onaddstream = event => {
+      setRemoteStream(event.stream);
+    };
+
+    setWebcamStarted(true);
+  };
+
+  const startCall = async () => {
+    const channelDoc = firestore().collection('channels').doc();
+    const offerCandidates = channelDoc.collection('offerCandidates');
+    const answerCandidates = channelDoc.collection('answerCandidates');
+
+    setChannelId(channelDoc.id);
+
+    pc.current.onicecandidate = async event => {
+      if (event.candidate) {
+        await offerCandidates.add(event.candidate.toJSON());
+      }
+    };
+
+    //create offer
+    const offerDescription = await pc.current.createOffer();
+    await pc.current.setLocalDescription(offerDescription);
+
+    const offer = {
+      sdp: offerDescription.sdp,
+      type: offerDescription.type,
+    };
+
+    await channelDoc.set({offer});
+
+    // Listen for remote answer
+    channelDoc.onSnapshot(snapshot => {
+      const data = snapshot.data();
+      if (!pc.current.currentRemoteDescription && data?.answer) {
+        const answerDescription = new RTCSessionDescription(data.answer);
+        pc.current.setRemoteDescription(answerDescription);
+      }
+    });
+
+    // When answered, add candidate to peer connection
+    answerCandidates.onSnapshot(snapshot => {
+      snapshot.docChanges().forEach(change => {
+        if (change.type === 'added') {
+          const data = change.doc.data();
+          pc.current.addIceCandidate(new RTCIceCandidate(data));
+        }
+      });
+    });
+  };
+
+  const joinCall = async () => {
+    const channelDoc = firestore().collection('channels').doc(channelId);
+    const offerCandidates = channelDoc.collection('offerCandidates');
+    const answerCandidates = channelDoc.collection('answerCandidates');
+
+    pc.current.onicecandidate = async event => {
+      if (event.candidate) {
+        await answerCandidates.add(event.candidate.toJSON());
+      }
+    };
+
+    const channelDocument = await channelDoc.get();
+    const channelData = channelDocument.data();
+
+    const offerDescription = channelData.offer;
+
+    await pc.current.setRemoteDescription(
+      new RTCSessionDescription(offerDescription),
+    );
+
+    const answerDescription = await pc.current.createAnswer();
+    await pc.current.setLocalDescription(answerDescription);
+
+    const answer = {
+      type: answerDescription.type,
+      sdp: answerDescription.sdp,
+    };
+
+    await channelDoc.update({answer});
+
+    offerCandidates.onSnapshot(snapshot => {
+      snapshot.docChanges().forEach(change => {
+        if (change.type === 'added') {
+          const data = change.doc.data();
+          pc.current.addIceCandidate(new RTCIceCandidate(data));
+        }
+      });
+    });
+  };
+
+  const copyToClipboard = str => {
+    Clipboard.setString(str);
   };
 
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.js</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
+    <KeyboardAvoidingView style={styles.body} behavior="position">
+      <SafeAreaView>
+        {localStream && (
+          <RTCView
+            streamURL={localStream?.toURL()}
+            style={styles.stream}
+            objectFit="cover"
+            mirror
+          />
+        )}
+
+        {remoteStream && (
+          <RTCView
+            streamURL={remoteStream?.toURL()}
+            style={styles.stream}
+            objectFit="cover"
+            mirror
+          />
+        )}
+        <View style={styles.buttons}>
+          {!webcamStarted && (
+            <Button title="Start webcam" onPress={startWebcam} />
+          )}
+          {webcamStarted && <Button title="Start call" onPress={startCall} />}
+          {webcamStarted && (
+            <View style={{flexDirection: 'row'}}>
+              <Button title="Join call" onPress={joinCall} />
+              <TextInput
+                value={channelId}
+                placeholder="callId"
+                minLength={45}
+                style={{borderWidth: 1, padding: 5}}
+                onChangeText={newText => setChannelId(newText)}
+              />
+              <Button
+                title="Copy"
+                onPress={() => {
+                  copyToClipboard(channelId);
+                }}
+              />
+            </View>
+          )}
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
+  body: {
+    backgroundColor: '#000000',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...StyleSheet.absoluteFill,
   },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
+  stream: {
+    flex: 2,
+    width: 200,
+    height: 200,
   },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
+  buttons: {
+    alignItems: 'flex-start',
+    flexDirection: 'column',
   },
 });
 
